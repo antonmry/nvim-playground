@@ -1,0 +1,6 @@
+This project is a Neovim plugin to interact with Wezterm directly from Neovim.
+
+The lua code can be found in `lua/sliwez.lua` and more info in the README.md
+file.
+
+After every change, `stylua` should be used to validate the syntax.

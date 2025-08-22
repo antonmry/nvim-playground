@@ -81,76 +81,31 @@ function M.configure_target_pane(pane)
 	M.__target_pane = pane
 end
 
-local function capture_highlighted_text()
-	-- Get the visual selection using vim.fn.getpos to be more reliable
-	local start_pos = vim.fn.getpos("'<")
-	local end_pos = vim.fn.getpos("'>")
-
-	local start_line = start_pos[2]
-	local start_col = start_pos[3]
-	local end_line = end_pos[2]
-	local end_col = end_pos[3]
-
-	-- Check if we have a valid selection
-	if start_line == 0 or end_line == 0 or (start_line == end_line and start_col == end_col) then
-		return nil
-	end
-
-	-- Get the current buffer
+local function capture_selected_or_current_lines()
+	-- Check if we're currently in visual mode
+	local mode = vim.api.nvim_get_mode()
 	local current_buffer = vim.api.nvim_get_current_buf()
-	local lines = {}
 
-	-- Handle single line selection
-	if start_line == end_line then
-		local line_text = vim.api.nvim_buf_get_lines(current_buffer, start_line - 1, start_line, false)[1]
-		if line_text then
-			-- For single line, extract the selected portion
-			line_text = string.sub(line_text, start_col, end_col)
-			table.insert(lines, line_text)
+	if mode.mode == "v" or mode.mode == "V" or mode.mode == "\22" then -- \22 is visual block mode
+		-- Visual mode: capture CURRENT selection using proper functions
+		-- vim.fn.line("v") gives the line where visual selection started
+		-- vim.fn.line(".") gives the current cursor line
+		local start_line = vim.fn.line("v")
+		local end_line = vim.fn.line(".")
+
+		-- Ensure start_line <= end_line (selection might go backwards)
+		if start_line > end_line then
+			start_line, end_line = end_line, start_line
 		end
+
+		local lines = vim.api.nvim_buf_get_lines(current_buffer, start_line - 1, end_line, false)
+		return table.concat(lines, "\n")
 	else
-		-- Handle multi-line selection
-		for line_num = start_line, end_line do
-			local line_text = vim.api.nvim_buf_get_lines(current_buffer, line_num - 1, line_num, false)[1]
-			if line_text then
-				if line_num == start_line then
-					-- First line: from start_col to end
-					line_text = string.sub(line_text, start_col)
-				elseif line_num == end_line then
-					-- Last line: from start to end_col
-					line_text = string.sub(line_text, 1, end_col)
-				end
-				-- Middle lines: take entire line
-				table.insert(lines, line_text)
-			end
-		end
+		-- Not in visual mode: capture current line
+		local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
+		local line_text = vim.api.nvim_buf_get_lines(current_buffer, cursor_line - 1, cursor_line, false)[1]
+		return line_text or ""
 	end
-
-	return table.concat(lines, "\n")
-end
-
-local function capture_paragraph_text()
-	local current_buffer = vim.api.nvim_get_current_buf()
-	local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
-	local start_line, end_line = cursor_line, cursor_line
-	while start_line > 0 do
-		local line = vim.api.nvim_buf_get_lines(current_buffer, start_line - 1, start_line, false)[1]
-		if line == "" then
-			break
-		end
-		start_line = start_line - 1
-	end
-	local total_lines = vim.api.nvim_buf_line_count(current_buffer)
-	while end_line < total_lines do
-		local line = vim.api.nvim_buf_get_lines(current_buffer, end_line, end_line + 1, false)[1]
-		if line == "" then
-			break
-		end
-		end_line = end_line + 1
-	end
-	local paragraph_lines = vim.api.nvim_buf_get_lines(current_buffer, start_line, end_line, false)
-	local paragraph_text = table.concat(paragraph_lines, "\n")
-	return paragraph_text
 end
 
 local function sleep(milliseconds)
@@ -197,48 +152,37 @@ function M.send_to_next_pane(text)
 	local next_pane = M.get_next_pane_in_tab()
 	if next_pane then
 		M.send_to_pane(text, next_pane.pane_id)
-		vim.print(string.format("Sent to pane %s (%s)", next_pane.pane_id, next_pane.title))
+		-- vim.print(string.format("Sent to pane %s (%s)", next_pane.pane_id, next_pane.title))
 	else
 		vim.print("No next pane found in current tab")
 	end
 end
 
-function M.send_highlighted_text()
-	local hl = capture_highlighted_text()
-	if hl and hl ~= "" then
-		M.send(hl)
+function M.send_lines()
+	local lines = capture_selected_or_current_lines()
+	if lines and lines ~= "" then
+		M.send(lines)
 	else
-		vim.print("No text highlighted or selection is empty")
+		vim.print("No lines to send")
 	end
 end
 
-function M.send_paragraph_text()
-	local para = capture_paragraph_text()
-	M.send(para)
-end
-
-function M.send_highlighted_text_to_next_pane()
-	local hl = capture_highlighted_text()
-	if hl and hl ~= "" then
-		M.send_to_next_pane(hl)
+function M.send_lines_to_next_pane()
+	local lines = capture_selected_or_current_lines()
+	if lines and lines ~= "" then
+		M.send_to_next_pane(lines)
 	else
-		vim.print("No text highlighted or selection is empty")
+		vim.print("No lines to send")
 	end
 end
 
-function M.send_paragraph_text_to_next_pane()
-	local para = capture_paragraph_text()
-	M.send_to_next_pane(para)
-end
-
-function M.send_highlighted_text_with_delay_ms(delay)
-	local hl = capture_highlighted_text()
-	M.send_delayed(hl, delay)
-end
-
-function M.send_paragraph_text_with_delay_ms(delay)
-	local para = capture_paragraph_text()
-	M.send_delayed(para, delay)
+function M.send_lines_with_delay_ms(delay)
+	local lines = capture_selected_or_current_lines()
+	if lines and lines ~= "" then
+		M.send_delayed(lines, delay)
+	else
+		vim.print("No lines to send")
+	end
 end
 
 return M

@@ -1,32 +1,29 @@
 # sliwez.nvim
 
-Send content from the current Neovim buffer to a configurable wezterm pane. It's
-based on [slimux.nvim](https://github.com/EvWilson/slimux.nvim)
+A Neovim plugin to send content from the current buffer to configurable wezterm
+panes. Based on [slimux.nvim](https://github.com/EvWilson/slimux.nvim).
 
 ## Example setup (and installation)
 
 Via [lazy](https://github.com/folke/lazy.nvim):
+
 ```lua
 require("lazy").setup({
   {
-    'EvWilson/sliwez.nvim',
+    'antonmry/sliwez.nvim', -- Update this to match your actual repository
     config = function()
       local sliwez = require('sliwez')
       sliwez.setup({
         target_pane = "1", -- wezterm pane ID
       })
       
-      -- Send to configured target pane
-      vim.keymap.set('v', '<leader>r', sliwez.send_highlighted_text,
-        { desc = 'Send currently highlighted text to configured wezterm pane' })
-      vim.keymap.set('n', '<leader>r', sliwez.send_paragraph_text,
-        { desc = 'Send paragraph under cursor to configured wezterm pane' })
+      -- Send selected lines or current line to configured target pane
+      vim.keymap.set({ 'n', 'v' }, '<leader>r', sliwez.send_lines,
+        { desc = 'Send selected lines or current line to configured wezterm pane' })
         
-      -- Send to next pane in current tab (no configuration needed)
-      vim.keymap.set('v', '<leader>n', sliwez.send_highlighted_text_to_next_pane,
-        { desc = 'Send highlighted text to next wezterm pane' })
-      vim.keymap.set('n', '<leader>n', sliwez.send_paragraph_text_to_next_pane,
-        { desc = 'Send paragraph to next wezterm pane' })
+      -- Send selected lines or current line to next pane in current tab (no configuration needed)
+      vim.keymap.set({ 'n', 'v' }, '<leader>n', sliwez.send_lines_to_next_pane,
+        { desc = 'Send selected lines or current line to next wezterm pane' })
     end
   }
 })
@@ -37,25 +34,39 @@ system. You can find pane IDs using `wezterm cli list` or by checking the
 `WEZTERM_PANE` environment variable in your current pane. This target pane can
 be configured initially in the `setup` function shown above, but also on the
 fly via the provided `configure_target_pane` function, like in the below
-snippet: ```
+snippet:
+
+```lua
 :lua require('sliwez').configure_target_pane('2')
 ```
 
 For more detail on wezterm pane targeting, check out the documentation:
-https://wezfurlong.org/wezterm/cli/list.html
+<https://wezfurlong.org/wezterm/cli/list.html>
 
 You can also get the current pane ID by running `echo $WEZTERM_PANE` in your
 shell.
 
+## Line Sending
+
+The plugin provides a unified interface for sending text to wezterm panes:
+
+- If text is visually selected (any visual mode), sends the selected lines
+  (always full lines)
+- If no selection, sends the current line
+
+Main functions:
+- `send_lines()` - Send selected lines or current line to configured target
+  pane
+- `send_lines_to_next_pane()` - Send selected lines or current line to next
+  pane in current tab
+- `send_lines_with_delay_ms(delay)` - Send selected lines or current line with
+  character delay
+
 ## Next Pane Functionality
 
-The plugin now includes convenient functions to automatically send text to the
+The plugin includes convenient functions to automatically send text to the
 next pane in the current wezterm tab, without needing to know or configure
-specific pane IDs:
-
-- `send_highlighted_text_to_next_pane()` - Send visual selection to next pane
-- `send_paragraph_text_to_next_pane()` - Send current paragraph to next pane
-- `send_to_next_pane(text)` - Send arbitrary text to next pane
+specific pane IDs.
 
 These functions automatically:
 1. Find all panes in the current tab
@@ -63,7 +74,8 @@ These functions automatically:
 3. Send the text to that pane
 4. Show confirmation with target pane info
 
-Additional available functions:
+## Additional Functions
+
 ```
 send(text)
   Parameters:
@@ -96,17 +108,13 @@ send_delayed(text, delay)
     THIS FUNCTION IS NOT ASYNCHRONOUS. Neovim will be frozen until the command 
     completes. Be careful with long strings and high delays.
 
-send_highlighted_text_with_delay_ms(delay)
+send_lines_with_delay_ms(delay)
   Parameters:
     - delay: a delay between each printed character, specified in milliseconds
   Description:
-    This function will send the highlighted text to the configured target, with
-    the given delay between each character sent. This can be useful for e.g.
+    This function will send selected lines or current line to the configured target,
+    with the given delay between each character sent. This can be useful for e.g.
     instructional applications, or a LMGTFY presentational panache.
-
-send_paragraph_text_with_delay_ms(delay)
-  Description:
-    Same as the above, but for captured paragraph text.
 
 get_wezterm_pane()
   Description:
