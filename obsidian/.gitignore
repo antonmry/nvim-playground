@@ -1,0 +1,8 @@
+.cache/
+.local/
+.state/
+.netrwhist
+.DS_Store
+Session.vim
+lazy-lock.json
+AGENTS.md
