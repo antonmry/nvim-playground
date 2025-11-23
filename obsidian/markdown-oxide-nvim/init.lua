@@ -170,18 +170,6 @@ local plugins = {
       vim.lsp.enable("markdown_oxide")
     end,
   },
-  {
-    "swaits/zellij-nav.nvim",
-    lazy = true,
-    event = "VeryLazy",
-    keys = {
-      { "<c-h>", "<cmd>ZellijNavigateLeftTab<cr>",  { silent = true, desc = "navigate left or tab"  } },
-      { "<c-j>", "<cmd>ZellijNavigateDown<cr>",  { silent = true, desc = "navigate down"  } },
-      { "<c-k>", "<cmd>ZellijNavigateUp<cr>",    { silent = true, desc = "navigate up"    } },
-      { "<c-l>", "<cmd>ZellijNavigateRightTab<cr>", { silent = true, desc = "navigate right or tab" } },
-    },
-    opts = {},
-  }
 }
 
 require("lazy").setup(plugins, {
@@ -190,16 +178,3 @@ require("lazy").setup(plugins, {
 })
 
 pcall(vim.cmd.colorscheme, "dawnfox")
-
-vim.api.nvim_create_autocmd({ "FocusGained" }, {
-  command = "silent !zellij action switch-mode locked",
-})
-vim.api.nvim_create_autocmd({ "VimEnter" }, {
-  command = "silent !zellij action switch-mode locked",
-})
-vim.api.nvim_create_autocmd({ "FocusLost" }, {
-  command = "silent !zellij action switch-mode normal",
-})
-vim.api.nvim_create_autocmd({ "VimLeave" }, {
-  command = "silent !zellij action switch-mode normal",
-})
